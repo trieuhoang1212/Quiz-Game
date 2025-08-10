@@ -117,8 +117,8 @@
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\VertexZoom.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\Benchmark02.cs" />
     <Compile Include="Assets\MaterialUI\Examples\Scripts\04 - RadioButton\Example04.cs" />
-    <Compile Include="Assets\Scrips\Score.cs" />
     <Compile Include="Assets\MaterialUI\Scripts\CheckboxFillerControl.cs" />
+    <Compile Include="Assets\Scrips\Score.cs" />
     <Compile Include="Assets\MaterialUI\Scripts\MenuArrowAnim.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMP_TextSelector_B.cs" />
     <Compile Include="Assets\MaterialUI\Scripts\ToastAnim.cs" />

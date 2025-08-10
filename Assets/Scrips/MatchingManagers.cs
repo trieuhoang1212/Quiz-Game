@@ -14,11 +14,9 @@ public class Matching : MonoBehaviour
     public Button startButton;
     public Button playButton;
     public TMP_Text resultText;
-
     public bool isDone = false;
     public string result;
     private bool isMatched = false;
-
     public class UserData
     {
         public string data { get; set; }
@@ -77,6 +75,7 @@ public class Matching : MonoBehaviour
             Debug.LogError($"Connection Error: {ex.Message}\n{ex.StackTrace}");
         }
 
+        
         startButton.onClick.AddListener(searchGame);
         playButton.onClick.AddListener(() =>
         {

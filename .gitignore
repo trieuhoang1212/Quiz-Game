@@ -1,9 +1,16 @@
 node_modules/
 
-Assets/
+Assets/Images
+Assets/Animation
+Assets/TextMesh Pro
+Assets/Scenes
+Assets/MaterialUI
 
 Library/
 
 Logs/
 
 ProjectSettings/
+
+Temp/
+
