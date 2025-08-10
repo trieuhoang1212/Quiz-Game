@@ -17,6 +17,7 @@ public class Matching : MonoBehaviour
     public bool isDone = false;
     public string result;
     private bool isMatched = false;
+    
     public class UserData
     {
         public string data { get; set; }
