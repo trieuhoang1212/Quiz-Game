@@ -36,6 +36,28 @@ public class SocketManager : MonoBehaviour
         socket.OnError += (sender, e) => Debug.LogError($"Socket Error: {e}");
         socket.OnDisconnected += (sender, e) => Debug.Log($"Disconnected from server: {e}");
 
+
+        socket.Off("finalResult");
+        socket.On("finalResult", (response) =>
+        {
+            var data = response.GetValue<Manager.FinalResult>();
+            Debug.Log($"[SocketManager] Final Result - My Score: {data.myScore}, Opponent Score: {data.opponentScore}, Result: {data.result}");
+
+            Manager.GameResult.player1Score = data.myScore;
+            Manager.GameResult.player2Score = data.opponentScore;
+            Manager.GameResult.winner = data.result;
+
+            SceneManager.LoadScene("Final");
+        });
+
+        socket.ConnectAsync().ContinueWith(task =>
+        {
+            if (task.IsFaulted)
+            {
+                Debug.LogError("Failed to connect to server: " + task.Exception);
+            }
+        });
+    
         socket.ConnectAsync().ContinueWith(task =>
         {
             if (task.IsFaulted)
