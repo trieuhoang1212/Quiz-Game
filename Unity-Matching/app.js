@@ -17,12 +17,16 @@ io.on("connection", (socket) => {
   console.log("A client connected:", socket.id);
 
   socket.on("searchGame", () => {
-    console.log("Searching...");
-    players.push(socket);
+    console.log(`Searching for game: ${socket.id}`);
+    if (players.length < 2) {
+      players.push(socket);
+    } else {
+      socket.emit("error", { message: "Game is full" });
+      return;
+    }
 
     if (players.length === 2) {
       console.log("Start Game!");
-
       players.forEach((player, index) => {
         player.emit("startGame", { playerNumber: index + 1 });
       });
@@ -30,6 +34,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("submitScore", (data) => {
+    if (!data || typeof data.score !== "number") {
+      console.log(`Invalid score from ${socket.id}: ${JSON.stringify(data)}`);
+      socket.emit("error", { message: "Invalid score format" });
+      return;
+    }
     console.log(`Score received from ${socket.id}: ${data.score}`);
 
     scores[socket.id] = {
@@ -42,7 +51,6 @@ io.on("connection", (socket) => {
       const p1 = scores[ids[0]];
       const p2 = scores[ids[1]];
 
-      // Send result to both players
       p1.socket.emit("finalResult", {
         myScore: p1.score,
         opponentScore: p2.score,

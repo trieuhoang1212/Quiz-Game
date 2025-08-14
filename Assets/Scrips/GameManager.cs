@@ -6,12 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using SocketIOClient;
 using TMPro;
-using UnityEngine.Playables;
-using Unity.VisualScripting;
 
 public class Manager : MonoBehaviour
 {
-    private SocketIOUnity socket;
+    public static Manager Instance;
     public Question[] questions;
     private static List<Question> Questions;
     private Question currentQuestion;
@@ -47,30 +45,21 @@ public class Manager : MonoBehaviour
 
     void Awake()
     {
-        // Đảm bảo GameManager không bị hủy khi reload scene
-        DontDestroyOnLoad(gameObject);
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
     }
 
     void Start()
     {
-        // Kiểm tra xem đã có socket hay chưa
-        var uri = new System.Uri("http://localhost:8000");
-        socket = new SocketIOUnity(uri, new SocketIOOptions
-        {
-            Query = new Dictionary<string, string> { { "token", "UNITY" } },
-            Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
-        });
-
-        socket.OnConnected += (sender, e) =>
-        {
-            Debug.Log("Connected to the server");
-            socket.Emit("searchGame"); // Tự động tìm game khi kết nối
-        };
-
-        socket.OnDisconnected += (sender, e) =>
-        {
-            Debug.Log("Disconnected from the server");
-        };
+        var socket = SocketManager.Instance.Socket;
 
         socket.On("finalResult", (response) =>
         {
@@ -81,19 +70,7 @@ public class Manager : MonoBehaviour
             GameResult.player2Score = data.player2Score;
             GameResult.winner = data.winner;
 
-            SceneManager.LoadScene("Final"); // Chuyển sang scene kết quả
-        });
-
-        socket.ConnectAsync().ContinueWith(task =>
-        {
-            if (task.IsFaulted)
-            {
-                Debug.LogError("Failed to connect to server: " + task.Exception);
-            }
-            else
-            {
-                Debug.Log("Connection attempt completed");
-            }
+            SceneManager.LoadScene("Final");
         });
 
         currentTime = TimeSkipQuestion;
@@ -127,10 +104,8 @@ public class Manager : MonoBehaviour
 
     List<Question> RandomQuestion()
     {
-        // Lọc câu hỏi theo độ khó và random
         var easy = questions.Where(q => q.difficulty == DifficultyLevel.Easy).OrderBy(x => Random.value).Take(maxEasyQuestions);
         var hard = questions.Where(q => q.difficulty == DifficultyLevel.Hard).OrderBy(x => Random.value).Take(maxHardQuestions);
-
         return easy.Concat(hard).OrderBy(x => Random.value).ToList();
     }
 
@@ -151,86 +126,85 @@ public class Manager : MonoBehaviour
     }
 
     IEnumerator TransitionToNextQuestion()
-{
-    if (Questions == null || Questions.Count == 0)
     {
-        Debug.LogWarning("Không còn câu hỏi để chuyển!");
-        socket.EmitAsync("sendScore", score);
-        SceneManager.LoadScene("Final");
-        yield break;
+        if (Questions != null && Questions.Count > 0)
+        {
+            Questions.RemoveAt(0);
+            Debug.Log($"Số câu hỏi còn lại: {Questions.Count}");
+        }
+        else
+        {
+            Debug.LogWarning("Danh sách câu hỏi rỗng hoặc null!");
+        }
+
+        yield return new WaitForSeconds(timeBetweenQuestions);
+
+        if (Questions == null || Questions.Count == 0)
+        {
+            Debug.Log("Hoàn thành quiz!");
+            Debug.Log($"Điểm cuối: {score}");
+            
+            var socket = SocketManager.Instance.Socket;
+            socket.EmitAsync("submitScore", new { score = score }); // Sử dụng submitScore thay vì sendScore
+
+            Score scoreManager = Score.Instance;
+            if (scoreManager != null)
+            {
+                scoreManager.Setup(score);
+            }
+            else
+            {
+                Debug.LogError("Score instance not found!");
+            }
+        }
+        else
+        {
+            currentQuestion = Questions[0];
+            CurrentQuestion();
+        }
+        currentTime = TimeSkipQuestion;
+        isQuestionActive = true;
     }
 
-    Questions.RemoveAt(0); // Xóa câu hỏi đầu tiên
-    Debug.Log($"Số câu hỏi còn lại: {Questions.Count}");
-    yield return new WaitForSeconds(timeBetweenQuestions);
+    public void UserSelectTrue()
+    {
+        animator.SetTrigger("True");
+        if (currentQuestion.isTrue)
+        {
+            score += GetPointsForQuestion(currentQuestion);
+            Debug.Log("Correct!");
+        }
+        else
+        {
+            Debug.Log("Wrong!");
+        }
 
-    if (Questions.Count == 0)
-    {
-        Debug.Log("Hoàn thành quiz!");
-        Debug.Log($"Điểm cuối: {score}");
-        socket.EmitAsync("sendScore", score);
-        SceneManager.LoadScene("Final");
-    }
-    else
-    {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
+        var socket = SocketManager.Instance.Socket;
+        socket.EmitAsync("answerResult", new { playerId = socket.Id, score });
 
-    currentTime = TimeSkipQuestion;
-    isQuestionActive = true;
-}
-
-public void UserSelectTrue()
-{
-    animator.SetTrigger("True");
-    if (currentQuestion.isTrue)
-    {
-        score += GetPointsForQuestion(currentQuestion);
-        Debug.Log("Correct!");
-    }
-    else
-    {
-        Debug.Log("Wrong!");
+        UpdateScoreText();
+        StartCoroutine(TransitionToNextQuestion());
     }
 
-    socket.EmitAsync("answerResult", new
+    public void UserSelectFalse()
     {
-        playerId = socket.Id,
-        score
-    });
+        animator.SetTrigger("False");
+        if (!currentQuestion.isTrue)
+        {
+            score += GetPointsForQuestion(currentQuestion);
+            Debug.Log("Correct!");
+        }
+        else
+        {
+            Debug.Log("Wrong!");
+        }
 
-    UpdateScoreText();
-    StartCoroutine(TransitionToNextQuestion());
-}
+        var socket = SocketManager.Instance.Socket;
+        socket.EmitAsync("answerResult", new { playerId = socket.Id, score });
 
-public void UserSelectFalse()
-{
-    if (currentQuestion == null || !isQuestionActive)
-    {
-        Debug.LogWarning("No question available or question is not active!");
-        return;
+        UpdateScoreText();
+        StartCoroutine(TransitionToNextQuestion());
     }
-
-    animator.SetTrigger("False");
-    if (currentQuestion.isTrue)
-    {
-        score += GetPointsForQuestion(currentQuestion);
-        Debug.Log("Correct!");
-    }
-    else
-    {
-        Debug.Log("Wrong!");
-    }
-
-    socket.EmitAsync("answerResult", new
-    {
-        playerId = socket.Id,
-        score
-    });
-
-    UpdateScoreText();
-    StartCoroutine(TransitionToNextQuestion());
-}
 
     void UpdateScoreText()
     {
@@ -240,13 +214,8 @@ public void UserSelectFalse()
         }
     }
 
-    void OnDestroy()
+    public int GetScore()
     {
-        // Chỉ ngắt kết nối khi game thực sự kết thúc
-        if (socket != null && SceneManager.GetActiveScene().name != "Final")
-        {
-            socket.DisconnectAsync();
-            Debug.Log("Socket disconnected on destroy");
-        }
+        return score;
     }
 }

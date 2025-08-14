@@ -112,9 +112,4 @@ public class Matching : MonoBehaviour
         socket.EmitAsync("play", play);
         Debug.Log($"Player chose completed");
     }
-
-    private void OnDestroy()
-    {
-        socket.DisconnectAsync();
-    }
 }

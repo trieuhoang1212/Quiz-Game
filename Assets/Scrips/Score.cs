@@ -1,52 +1,78 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 using System;
 using SocketIOClient;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class Score : MonoBehaviour
 {
-    [SerializeField] private TMP_Text resultText;
-    private SocketIOUnity socket;
+    public static Score Instance;
+    private int maxPlatformScore = 0;
+    public TextMeshProUGUI PointSocre;
 
     [Serializable]
     public class FinalResultData
     {
-        public string result; // "WIN", "LOSE", "DRAW"
+        public string result;
         public int myScore;
         public int opponentScore;
     }
 
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+    }
+
     void Start()
     {
-        var uri = new Uri("http://localhost:8000");
-        socket = new SocketIOUnity(uri, new SocketIOOptions
-        {
-            Query = new Dictionary<string, string> { { "token", "UNITY" } },
-            Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
-        });
-
-        socket.OnConnected += (sender, e) => Debug.Log("Connected to server from Score");
+        var socket = SocketManager.Instance.Socket;
 
         socket.On("finalResult", response =>
         {
+            Debug.Log($"Raw response: {response}");
             var data = response.GetValue<FinalResultData>();
             string result = data.result == "WIN" ? "Winner" : data.result == "LOSE" ? "Loser" : "Draw";
-            resultText.text = $"Your Score: {data.myScore}\nOpponent Score: {data.opponentScore}\nResult: {result}";
+            maxPlatformScore = data.myScore;
+            PointSocre.text = $"Your Score: {data.myScore}\nOpponent Score: {data.opponentScore}\nResult: {result}";
             Debug.Log($"Game Result: {result}, Your Score: {data.myScore}, Opponent Score: {data.opponentScore}");
+            SceneManager.LoadScene("Final");
         });
 
-        socket.ConnectAsync();
+        // Lấy điểm từ Manager
+        Manager gameManager = FindObjectOfType<Manager>();
+        if (gameManager != null)
+        {
+            maxPlatformScore = gameManager.GetScore();
+            Setup(maxPlatformScore);
+        }
+        else
+        {
+            Debug.LogError("GameManager instance not found!");
+        }
     }
 
-    void OnDestroy()
+    public void Setup(int point)
     {
-        if (socket != null)
+        gameObject.SetActive(true);
+        maxPlatformScore = point;
+        if (PointSocre != null)
         {
-            socket.DisconnectAsync();
+            PointSocre.text = "Score: " + maxPlatformScore;
+            Debug.Log($"Score setup with score: {point}");
+        }
+        else
+        {
+            Debug.LogError("PointSocre is not assigned!");
         }
     }
 }
-
-
