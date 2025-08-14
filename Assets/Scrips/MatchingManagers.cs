@@ -29,16 +29,8 @@ public class Matching : MonoBehaviour
     {
         // Lúc đầu tắt nút Play
         playButton.interactable = false;
-
-        var uri = new Uri("http://localhost:8000");
-        socket = new SocketIOUnity(uri, new SocketIOOptions
-        {
-            Query = new Dictionary<string, string>
-            {
-                {"token", "UNITY" }
-            },
-            Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
-        });
+        
+        socket = SocketManager.Instance.Socket;
 
         socket.OnConnected += (sender, e) =>
         {

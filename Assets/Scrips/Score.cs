@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using System;
 using SocketIOClient;
+using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
@@ -75,4 +76,29 @@ public class Score : MonoBehaviour
             Debug.LogError("PointSocre is not assigned!");
         }
     }
+
+    public async void MainMenu()
+    {
+        var socket = SocketManager.Instance.Socket;
+        if (socket != null)
+        {
+            socket.Off("finalResult");
+            await socket.DisconnectAsync();
+            Debug.Log("Disconnected from server.");
+        }
+
+        // Xóa các instance cũ để UI Final không còn hiển thị
+        if (Score.Instance != null)
+            Destroy(Score.Instance.gameObject);
+
+        if (Manager.Instance != null)
+            Destroy(Manager.Instance.gameObject);
+
+        if (SocketManager.Instance != null)
+            Destroy(SocketManager.Instance.gameObject);
+
+        SceneManager.LoadScene("Menu");
+    }
+
+
 }
