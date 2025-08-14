@@ -26,14 +26,15 @@ public class Manager : MonoBehaviour
     [SerializeField] private float TimeSkipQuestion = 5f;
     private float currentTime;
     private bool isQuestionActive = false;
+    private bool finalSceneLoaded = false;
     [SerializeField] private Animator animator;
 
     [System.Serializable]
     public class FinalResult
     {
-        public int player1Score;
-        public int player2Score;
-        public int winner; // 0: hòa, 1: player1 thắng, 2: player2 thắng
+        public int result; // 0: hòa, 1: player1 thắng, 2: player2 thắng
+        public int myScore;
+        public int opponentScore; 
     }
 
     public static class GameResult
@@ -60,16 +61,21 @@ public class Manager : MonoBehaviour
     void Start()
     {
         var socket = SocketManager.Instance.Socket;
+        socket.Off("finalResult"); // tránh lặp listener
 
-        socket.On("finalResult", (response) =>
+        socket.On("finalResult", async (response) =>
         {
+            if (finalSceneLoaded) return;
+            finalSceneLoaded = true;
+
             var data = response.GetValue<FinalResult>();
-            Debug.Log($"Player 1: {data.player1Score}, Player 2: {data.player2Score}, Winner: {data.winner}");
+            Debug.Log($"My Score: {data.myScore}, Opponent Score: {data.opponentScore}, Result: {data.result}");
 
-            GameResult.player1Score = data.player1Score;
-            GameResult.player2Score = data.player2Score;
-            GameResult.winner = data.winner;
+            GameResult.player1Score = data.myScore;
+            GameResult.player2Score = data.opponentScore;
+            GameResult.winner = data.result;
 
+            await socket.DisconnectAsync();
             SceneManager.LoadScene("Final");
         });
 
@@ -111,6 +117,7 @@ public class Manager : MonoBehaviour
 
     void CurrentQuestion()
     {
+        ResetAnimations();
         if (currentQuestion != null)
         {
             factText.text = currentQuestion.fact;
@@ -135,6 +142,7 @@ public class Manager : MonoBehaviour
         else
         {
             Debug.LogWarning("Danh sách câu hỏi rỗng hoặc null!");
+            yield break;
         }
 
         yield return new WaitForSeconds(timeBetweenQuestions);
@@ -143,7 +151,10 @@ public class Manager : MonoBehaviour
         {
             Debug.Log("Hoàn thành quiz!");
             Debug.Log($"Điểm cuối: {score}");
-            
+            SceneManager.LoadScene("Final");
+
+            isQuestionActive = false;
+
             var socket = SocketManager.Instance.Socket;
             socket.EmitAsync("submitScore", new { score = score }); // Sử dụng submitScore thay vì sendScore
 
@@ -152,11 +163,9 @@ public class Manager : MonoBehaviour
             {
                 scoreManager.Setup(score);
             }
-            else
-            {
-                Debug.LogError("Score instance not found!");
-            }
+            yield break;
         }
+
         else
         {
             currentQuestion = Questions[0];
@@ -178,7 +187,6 @@ public class Manager : MonoBehaviour
         {
             Debug.Log("Wrong!");
         }
-
         var socket = SocketManager.Instance.Socket;
         socket.EmitAsync("answerResult", new { playerId = socket.Id, score });
 
@@ -198,7 +206,6 @@ public class Manager : MonoBehaviour
         {
             Debug.Log("Wrong!");
         }
-
         var socket = SocketManager.Instance.Socket;
         socket.EmitAsync("answerResult", new { playerId = socket.Id, score });
 
@@ -218,4 +225,13 @@ public class Manager : MonoBehaviour
     {
         return score;
     }
+
+    void ResetAnimations()
+    {
+        animator.ResetTrigger("True");
+        animator.ResetTrigger("False");
+        animator.Play("NoAnswer");
+}
+
+
 }
