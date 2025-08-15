@@ -86,6 +86,7 @@ public class Matching : MonoBehaviour
 
     void searchGame()
     {
+        // startButton.interactable = false;
         socket.Emit("searchGame");
         Debug.Log("Searching game...");
     }

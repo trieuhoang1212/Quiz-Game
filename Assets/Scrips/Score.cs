@@ -11,6 +11,7 @@ public class Score : MonoBehaviour
     public static Score Instance;
     private int maxPlatformScore = 0;
     public TextMeshProUGUI PointSocre;
+    public TextMeshProUGUI winnerText;
 
     [Serializable]
     public class FinalResultData
@@ -44,8 +45,15 @@ public class Score : MonoBehaviour
             var data = response.GetValue<FinalResultData>();
             string result = data.result == "WIN" ? "Winner" : data.result == "LOSE" ? "Loser" : "Draw";
             maxPlatformScore = data.myScore;
+            PlayerPrefs.SetInt("myScore", data.myScore);
+            PlayerPrefs.SetInt("opponentScore", data.opponentScore);
+            PlayerPrefs.SetString("result", result);
+            PlayerPrefs.Save();
+
             PointSocre.text = $"Your Score: {data.myScore}\nOpponent Score: {data.opponentScore}\nResult: {result}";
+            Winner(result);
             Debug.Log($"Game Result: {result}, Your Score: {data.myScore}, Opponent Score: {data.opponentScore}");
+
             SceneManager.LoadScene("Final");
         });
 
@@ -60,6 +68,8 @@ public class Score : MonoBehaviour
         {
             Debug.LogError("GameManager instance not found!");
         }
+
+        
     }
 
     public void Setup(int point)
@@ -88,16 +98,23 @@ public class Score : MonoBehaviour
         }
 
         // Xóa các instance cũ để UI Final không còn hiển thị
-        if (Score.Instance != null)
-            Destroy(Score.Instance.gameObject);
-
-        if (Manager.Instance != null)
-            Destroy(Manager.Instance.gameObject);
-
-        if (SocketManager.Instance != null)
-            Destroy(SocketManager.Instance.gameObject);
+        Destroy(SocketManager.Instance.gameObject);
+        Destroy(Manager.Instance.gameObject);
+        Destroy(gameObject);
 
         SceneManager.LoadScene("Menu");
+    }
+
+    public void Winner(string result)
+    {
+        if (winnerText != null)
+        {
+            winnerText.text = result;
+        }
+        else
+        {
+            Debug.LogError("WinnerText is not assigned!");
+        }
     }
 
 
