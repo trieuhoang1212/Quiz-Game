@@ -34,15 +34,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("submitScore", (data) => {
-    if (!data || typeof data.score !== "number") {
-      console.log(`Invalid score from ${socket.id}: ${JSON.stringify(data)}`);
-      socket.emit("error", { message: "Invalid score format" });
-      return;
-    }
     console.log(`Score received from ${socket.id}: ${data.score}`);
-
     scores[socket.id] = {
-      score: data.score,
+      score: data.score || 0, // Đảm bảo score không undefined
       socket: socket,
     };
 
@@ -51,21 +45,29 @@ io.on("connection", (socket) => {
       const p1 = scores[ids[0]];
       const p2 = scores[ids[1]];
 
+      const result1 = getResult(p1.score, p2.score);
+      const result2 = getResult(p2.score, p1.score);
+
+      console.log(`Sending finalResult to ${ids[0]}: myScore=${p1.score}, opponentScore=${p2.score}, result=${result1}`);
       p1.socket.emit("finalResult", {
         myScore: p1.score,
         opponentScore: p2.score,
-        result: getResult(p1.score, p2.score),
+        result: result1,
       });
 
+      console.log(`Sending finalResult to ${ids[1]}: myScore=${p2.score}, opponentScore=${p1.score}, result=${result2}`);
       p2.socket.emit("finalResult", {
         myScore: p2.score,
         opponentScore: p1.score,
-        result: getResult(p2.score, p1.score),
+        result: result2,
       });
 
-      // Reset
-      players = [];
-      scores = {};
+      // Reset sau 5 giây
+      setTimeout(() => {
+        players = [];
+        scores = {};
+        console.log("Game reset: players and scores cleared.");
+      }, 5000);
     }
   });
 

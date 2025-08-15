@@ -2,7 +2,6 @@ using UnityEngine;
 using SocketIOClient;
 using System;
 using System.Collections.Generic;
-using UnityEngine.SceneManagement;
 
 public class SocketManager : MonoBehaviour
 {
@@ -38,16 +37,17 @@ public class SocketManager : MonoBehaviour
 
 
         socket.Off("finalResult");
-        socket.On("finalResult", (response) =>
+        socket.On("finalResult", static (response) =>
         {
-            var data = response.GetValue<Manager.FinalResult>();
+            var data = response.GetValue<Score.FinalResultData>();
             Debug.Log($"[SocketManager] Final Result - My Score: {data.myScore}, Opponent Score: {data.opponentScore}, Result: {data.result}");
 
-            Manager.GameResult.player1Score = data.myScore;
-            Manager.GameResult.player2Score = data.opponentScore;
-            Manager.GameResult.winner = data.result;
-
-            SceneManager.LoadScene("Final");
+            Score.FinalResultData finalResultData = new Score.FinalResultData
+            {
+                myScore = data.myScore,
+                opponentScore = data.opponentScore,
+                result = data.result
+            };
         });
 
         socket.ConnectAsync().ContinueWith(task =>

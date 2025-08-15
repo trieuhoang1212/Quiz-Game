@@ -26,23 +26,8 @@ public class Manager : MonoBehaviour
     [SerializeField] private float TimeSkipQuestion = 5f;
     private float currentTime;
     private bool isQuestionActive = false;
-    private bool finalSceneLoaded = false;
     [SerializeField] private Animator animator;
 
-    [System.Serializable]
-    public class FinalResult
-    {
-        public int result; // 0: hòa, 1: player1 thắng, 2: player2 thắng
-        public int myScore;
-        public int opponentScore; 
-    }
-
-    public static class GameResult
-    {
-        public static int player1Score;
-        public static int player2Score;
-        public static int winner;
-    }
 
     void Awake()
     {
@@ -61,23 +46,6 @@ public class Manager : MonoBehaviour
     void Start()
     {
         var socket = SocketManager.Instance.Socket;
-        socket.Off("finalResult"); // tránh lặp listener
-
-        socket.On("finalResult", async (response) =>
-        {
-            if (finalSceneLoaded) return;
-            finalSceneLoaded = true;
-
-            var data = response.GetValue<FinalResult>();
-            Debug.Log($"My Score: {data.myScore}, Opponent Score: {data.opponentScore}, Result: {data.result}");
-
-            GameResult.player1Score = data.myScore;
-            GameResult.player2Score = data.opponentScore;
-            GameResult.winner = data.result;
-
-            await socket.DisconnectAsync();
-            SceneManager.LoadScene("Final");
-        });
 
         currentTime = TimeSkipQuestion;
 
@@ -142,7 +110,6 @@ public class Manager : MonoBehaviour
         else
         {
             Debug.LogWarning("Danh sách câu hỏi rỗng hoặc null!");
-            yield break;
         }
 
         yield return new WaitForSeconds(timeBetweenQuestions);
@@ -161,7 +128,7 @@ public class Manager : MonoBehaviour
             Score scoreManager = Score.Instance;
             if (scoreManager != null)
             {
-                scoreManager.Setup(score);
+                scoreManager.ScoreFinal(score);
             }
             yield break;
         }

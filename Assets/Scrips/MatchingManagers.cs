@@ -12,12 +12,13 @@ public class Matching : MonoBehaviour
 {
     private SocketIOUnity socket;
     public Button startButton;
+    public Button resetButton;
     public Button playButton;
     public TMP_Text resultText;
     public bool isDone = false;
     public string result;
     private bool isMatched = false;
-    
+
     public class UserData
     {
         public string data { get; set; }
@@ -29,7 +30,7 @@ public class Matching : MonoBehaviour
     {
         // Lúc đầu tắt nút Play
         playButton.interactable = false;
-        
+
         socket = SocketManager.Instance.Socket;
 
         socket.OnConnected += (sender, e) =>
@@ -47,17 +48,9 @@ public class Matching : MonoBehaviour
         {
             Debug.Log("Matching is completed!");
             isMatched = true;
-            playButton.interactable = true; 
+            playButton.interactable = true;
         });
 
-        socket.On("result", response =>
-        {
-            Debug.Log("Game is over");
-            var obj = response.GetValue<UserData>();
-            Debug.Log("Game Result: " + obj.result);
-            isDone = true;
-            result = obj.result;
-        });
 
         try
         {
@@ -68,11 +61,10 @@ public class Matching : MonoBehaviour
             Debug.LogError($"Connection Error: {ex.Message}\n{ex.StackTrace}");
         }
 
-        
         startButton.onClick.AddListener(searchGame);
         playButton.onClick.AddListener(() =>
         {
-            if (isMatched) // chỉ chơi khi đã match đủ người
+            if (isMatched)
             {
                 playGame("Play");
                 SceneManager.LoadScene("UI");
@@ -105,4 +97,5 @@ public class Matching : MonoBehaviour
         socket.EmitAsync("play", play);
         Debug.Log($"Player chose completed");
     }
+
 }

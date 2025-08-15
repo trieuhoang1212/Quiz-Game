@@ -11,7 +11,8 @@ public class Score : MonoBehaviour
     public static Score Instance;
     private int maxPlatformScore = 0;
     public TextMeshProUGUI PointSocre;
-    public TextMeshProUGUI winnerText;
+    public TextMeshProUGUI ResultText;
+    private string lastResult;
 
     [Serializable]
     public class FinalResultData
@@ -39,51 +40,59 @@ public class Score : MonoBehaviour
     {
         var socket = SocketManager.Instance.Socket;
 
-        socket.On("finalResult", response =>
+        socket.On("finalResult", static response =>
         {
-            Debug.Log($"Raw response: {response}");
             var data = response.GetValue<FinalResultData>();
-            string result = data.result == "WIN" ? "Winner" : data.result == "LOSE" ? "Loser" : "Draw";
-            maxPlatformScore = data.myScore;
-            PlayerPrefs.SetInt("myScore", data.myScore);
-            PlayerPrefs.SetInt("opponentScore", data.opponentScore);
-            PlayerPrefs.SetString("result", result);
-            PlayerPrefs.Save();
 
-            PointSocre.text = $"Your Score: {data.myScore}\nOpponent Score: {data.opponentScore}\nResult: {result}";
-            Winner(result);
-            Debug.Log($"Game Result: {result}, Your Score: {data.myScore}, Opponent Score: {data.opponentScore}");
+            string resultText = data.result == "WIN" ? "WINNER" :
+                                data.result == "LOSE" ? "LOSER" : "DRAW";
 
-            SceneManager.LoadScene("Final");
+            // Hiển thị điểm
+            Score.Instance.ScoreFinal(data.myScore);
+
+            // Hiển thị kết quả ở ResultText
+            Score.Instance.SetResult(resultText);
         });
+
 
         // Lấy điểm từ Manager
         Manager gameManager = FindObjectOfType<Manager>();
         if (gameManager != null)
         {
             maxPlatformScore = gameManager.GetScore();
-            Setup(maxPlatformScore);
+            ScoreFinal(maxPlatformScore);
         }
         else
         {
             Debug.LogError("GameManager instance not found!");
         }
 
-        
     }
 
-    public void Setup(int point)
+    public void ScoreFinal(int point)
     {
         gameObject.SetActive(true);
         maxPlatformScore = point;
+
         if (PointSocre != null)
         {
-            PointSocre.text = "Score: " + maxPlatformScore;
+            PointSocre.text = $"Score: {maxPlatformScore}";
             Debug.Log($"Score setup with score: {point}");
         }
         else
         {
             Debug.LogError("PointSocre is not assigned!");
+        }
+    }
+    public void SetResult(string result)
+    {
+        gameObject.SetActive(true);
+        lastResult = result;
+        Debug.Log($"SetResult called with: {result}");
+
+        if (ResultText != null)
+        {
+            ResultText.text = lastResult;
         }
     }
 
@@ -105,17 +114,6 @@ public class Score : MonoBehaviour
         SceneManager.LoadScene("Menu");
     }
 
-    public void Winner(string result)
-    {
-        if (winnerText != null)
-        {
-            winnerText.text = result;
-        }
-        else
-        {
-            Debug.LogError("WinnerText is not assigned!");
-        }
-    }
 
 
 }
