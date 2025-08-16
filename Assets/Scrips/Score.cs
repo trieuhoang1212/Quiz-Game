@@ -98,20 +98,20 @@ public class Score : MonoBehaviour
         }
     }
     public void SetResult(string result)
-{
-    gameObject.SetActive(true);
-    lastResult = result;
+    {
+        gameObject.SetActive(true);
+        lastResult = result;
 
-    if (ResultText != null)
-    {
-        ResultText.text = lastResult;
-        Debug.Log("UI ResultText updated: " + lastResult);
+        if (ResultText != null)
+        {
+            ResultText.text = lastResult;
+            Debug.Log("UI ResultText updated: " + lastResult);
+        }
+        else
+        {
+            Debug.LogError("ResultText is NULL in SetResult!");
+        }
     }
-    else
-    {
-        Debug.LogError("ResultText is NULL in SetResult!");
-    }
-}
 
     public async void MainMenu()
     {
