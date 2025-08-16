@@ -3,9 +3,7 @@ using TMPro;
 using System;
 using SocketIOClient;
 using UnityEngine.UI;
-using System.Collections.Generic;
 using UnityEngine.SceneManagement;
-using Newtonsoft.Json;
 
 public class Score : MonoBehaviour
 {
@@ -14,14 +12,6 @@ public class Score : MonoBehaviour
     public TextMeshProUGUI PointSocre;
     public TextMeshProUGUI ResultText;
     private string lastResult;
-
-    [Serializable]
-    public class FinalResultData
-    {
-        public int myScore;
-        public int opponentScore;
-        public string result;
-    }
 
     void Awake()
     {
@@ -40,46 +30,21 @@ public class Score : MonoBehaviour
     void Start()
     {
         var socket = SocketManager.Instance.Socket;
-
-        socket.On("finalResult", static (response) =>
+        Manager ResultManager = FindObjectOfType<Manager>();
+        Manager ScoreManager = FindObjectOfType<Manager>();
+        if (ResultManager != null)
         {
-            string json = response.GetValue().ToString();
-            Debug.Log("Raw finalResult: " + json);
+            int finalScore = ScoreManager.GetCurrentScore();
+            string finalresult = ResultManager.GetFinalResult();
+            ScoreFinal(finalScore);
+            SetResult(finalresult);
             
-            var data = JsonConvert.DeserializeObject<Score.FinalResultData>(json);
-
-            Debug.Log($"Final Result - My Score: {data.myScore}, Opponent Score: {data.opponentScore}, Result: {data.result}");
-
-            Score.FinalResultData finalResultData = new Score.FinalResultData
-            {
-                myScore = data.myScore,
-                opponentScore = data.opponentScore,
-                result = data.result
-            };
-            
-            string resultText = finalResultData.result == "WIN" ? "WINNER" :
-                                finalResultData.result == "LOSE" ? "LOSER" : "DRAW";
-
-            // Hiển thị điểm
-            Score.Instance.ScoreFinal(finalResultData.myScore);
-
-            // Hiển thị kết quả ở ResultText
-            Score.Instance.SetResult(resultText);
-        });
-
-
-        // Lấy điểm từ Manager
-        Manager gameManager = FindObjectOfType<Manager>();
-        if (gameManager != null)
-        {
-            maxPlatformScore = gameManager.GetScore();
-            ScoreFinal(maxPlatformScore);
         }
         else
         {
-            Debug.LogError("GameManager instance not found!");
+            Debug.LogError("ResultManager is NULL in Start!");
+            ResultText.text = "Waiting for result...";
         }
-
     }
 
     public void ScoreFinal(int point)
@@ -97,8 +62,10 @@ public class Score : MonoBehaviour
             Debug.LogError("PointSocre is not assigned!");
         }
     }
+
     public void SetResult(string result)
     {
+        Debug.Log("SetResult called with: " + result);
         gameObject.SetActive(true);
         lastResult = result;
 
@@ -107,10 +74,6 @@ public class Score : MonoBehaviour
             ResultText.text = lastResult;
             Debug.Log("UI ResultText updated: " + lastResult);
         }
-        else
-        {
-            Debug.LogError("ResultText is NULL in SetResult!");
-        }
     }
 
     public async void MainMenu()
@@ -118,19 +81,15 @@ public class Score : MonoBehaviour
         var socket = SocketManager.Instance.Socket;
         if (socket != null)
         {
-            socket.Off("finalResult");
+            socket.Off("gameResult");
             await socket.DisconnectAsync();
             Debug.Log("Disconnected from server.");
         }
 
-        // Xóa các instance cũ để UI Final không còn hiển thị
         Destroy(SocketManager.Instance.gameObject);
         Destroy(Manager.Instance.gameObject);
         Destroy(gameObject);
 
         SceneManager.LoadScene("Menu");
     }
-
-
-
 }

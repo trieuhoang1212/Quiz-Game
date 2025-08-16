@@ -47,8 +47,10 @@ public class Matching : MonoBehaviour
         socket.On("startGame", response =>
         {
             Debug.Log("Matching is completed!");
+            var data = response.GetValue<UserData>();
             isMatched = true;
             playButton.interactable = true;
+            Debug.Log($"Assigned as Player {data.playerNumber}");
         });
 
 
@@ -96,6 +98,7 @@ public class Matching : MonoBehaviour
     {
         socket.EmitAsync("play", play);
         Debug.Log($"Player chose completed");
+        
     }
 
 }

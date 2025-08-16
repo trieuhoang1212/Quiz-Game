@@ -42,16 +42,7 @@ public class SocketManager : MonoBehaviour
                 Debug.LogError("Failed to connect to server: " + task.Exception);
             }
         });
-    
-        socket.ConnectAsync().ContinueWith(task =>
-        {
-            if (task.IsFaulted)
-            {
-                Debug.LogError("Failed to connect to server: " + task.Exception);
-            }
-        });
-    }
-
+}
     public SocketIOUnity Socket => socket;
 
     void OnDestroy()
