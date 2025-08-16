@@ -34,7 +34,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("submitScore", (data) => {
-    console.log(`Score received from ${socket.id}: ${data.score}`);
+    console.log(`Score received from ${socket.id}: ${data.score}`
+    );
+    console.log(`result received from ${socket.id}: ${data.result}`);
     scores[socket.id] = {
       score: data.score || 0, // Đảm bảo score không undefined
       socket: socket,
@@ -67,7 +69,7 @@ io.on("connection", (socket) => {
         players = [];
         scores = {};
         console.log("Game reset: players and scores cleared.");
-      }, 5000);
+      }, 10000);
     }
   });
 
