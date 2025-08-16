@@ -5,6 +5,7 @@ using SocketIOClient;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
+using Newtonsoft.Json;
 
 public class Score : MonoBehaviour
 {
@@ -17,9 +18,9 @@ public class Score : MonoBehaviour
     [Serializable]
     public class FinalResultData
     {
-        public string result;
         public int myScore;
         public int opponentScore;
+        public string result;
     }
 
     void Awake()
@@ -40,15 +41,27 @@ public class Score : MonoBehaviour
     {
         var socket = SocketManager.Instance.Socket;
 
-        socket.On("finalResult", static response =>
+        socket.On("finalResult", static (response) =>
         {
-            var data = response.GetValue<FinalResultData>();
+            string json = response.GetValue().ToString();
+            Debug.Log("Raw finalResult: " + json);
+            
+            var data = JsonConvert.DeserializeObject<Score.FinalResultData>(json);
 
-            string resultText = data.result == "WIN" ? "WINNER" :
-                                data.result == "LOSE" ? "LOSER" : "DRAW";
+            Debug.Log($"Final Result - My Score: {data.myScore}, Opponent Score: {data.opponentScore}, Result: {data.result}");
+
+            Score.FinalResultData finalResultData = new Score.FinalResultData
+            {
+                myScore = data.myScore,
+                opponentScore = data.opponentScore,
+                result = data.result
+            };
+            
+            string resultText = finalResultData.result == "WIN" ? "WINNER" :
+                                finalResultData.result == "LOSE" ? "LOSER" : "DRAW";
 
             // Hiển thị điểm
-            Score.Instance.ScoreFinal(data.myScore);
+            Score.Instance.ScoreFinal(finalResultData.myScore);
 
             // Hiển thị kết quả ở ResultText
             Score.Instance.SetResult(resultText);
@@ -85,16 +98,20 @@ public class Score : MonoBehaviour
         }
     }
     public void SetResult(string result)
-    {
-        gameObject.SetActive(true);
-        lastResult = result;
-        Debug.Log($"SetResult called with: {result}");
+{
+    gameObject.SetActive(true);
+    lastResult = result;
 
-        if (ResultText != null)
-        {
-            ResultText.text = lastResult;
-        }
+    if (ResultText != null)
+    {
+        ResultText.text = lastResult;
+        Debug.Log("UI ResultText updated: " + lastResult);
     }
+    else
+    {
+        Debug.LogError("ResultText is NULL in SetResult!");
+    }
+}
 
     public async void MainMenu()
     {

@@ -35,21 +35,6 @@ public class SocketManager : MonoBehaviour
         socket.OnError += (sender, e) => Debug.LogError($"Socket Error: {e}");
         socket.OnDisconnected += (sender, e) => Debug.Log($"Disconnected from server: {e}");
 
-
-        socket.Off("finalResult");
-        socket.On("finalResult", static (response) =>
-        {
-            var data = response.GetValue<Score.FinalResultData>();
-            Debug.Log($"[SocketManager] Final Result - My Score: {data.myScore}, Opponent Score: {data.opponentScore}, Result: {data.result}");
-
-            Score.FinalResultData finalResultData = new Score.FinalResultData
-            {
-                myScore = data.myScore,
-                opponentScore = data.opponentScore,
-                result = data.result
-            };
-        });
-
         socket.ConnectAsync().ContinueWith(task =>
         {
             if (task.IsFaulted)
