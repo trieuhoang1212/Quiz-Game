@@ -15,6 +15,7 @@ public class Manager : MonoBehaviour
     private Question currentQuestion;
 
     private static int score = 0;
+    private static string result;
 
     [SerializeField] private int maxEasyQuestions = 2;
     [SerializeField] private int maxHardQuestions = 2;
@@ -27,7 +28,6 @@ public class Manager : MonoBehaviour
     private float currentTime;
     private bool isQuestionActive = false;
     [SerializeField] private Animator animator;
-
 
     void Awake()
     {
@@ -61,6 +61,27 @@ public class Manager : MonoBehaviour
             CurrentQuestion();
             UpdateScoreText();
         }
+
+        // Đăng ký sự kiện gameResult
+        socket.On("gameResult", (response) =>
+        {
+            Debug.Log("gameResult event received!");
+            var json = response.GetValue().ToString();
+            var finalResultData = JsonUtility.FromJson<FinalResultData>(json);
+
+            Debug.Log($"Final Result - My Score: {finalResultData.myScore}, Opponent Score: {finalResultData.opponentScore}, Result: {finalResultData.result}");
+
+            string resultText = finalResultData.result == "WIN" ? "WINNER" :
+                               finalResultData.result == "LOSE" ? "LOSER" : "DRAW";
+
+            Score scoreManager = Score.Instance;
+            SetFinalResult(resultText);
+            if (scoreManager != null)
+            {
+                scoreManager.ScoreFinal(finalResultData.myScore);
+                scoreManager.SetResult(resultText);
+            }
+        });
     }
 
     void Update()
@@ -121,18 +142,10 @@ public class Manager : MonoBehaviour
             SceneManager.LoadScene("Final");
 
             isQuestionActive = false;
-
-            var socket = SocketManager.Instance.Socket;
-            socket.EmitAsync("submitScore", new { score = score }); // Sử dụng submitScore thay vì sendScore
-
-            Score scoreManager = Score.Instance;
-            if (scoreManager != null)
-            {
-                scoreManager.ScoreFinal(score);
-            }
+            GetScore(score);
+            GetResult(result);
             yield break;
         }
-
         else
         {
             currentQuestion = Questions[0];
@@ -154,9 +167,6 @@ public class Manager : MonoBehaviour
         {
             Debug.Log("Wrong!");
         }
-        var socket = SocketManager.Instance.Socket;
-        socket.EmitAsync("answerResult", new { playerId = socket.Id, score });
-
         UpdateScoreText();
         StartCoroutine(TransitionToNextQuestion());
     }
@@ -173,9 +183,6 @@ public class Manager : MonoBehaviour
         {
             Debug.Log("Wrong!");
         }
-        var socket = SocketManager.Instance.Socket;
-        socket.EmitAsync("answerResult", new { playerId = socket.Id, score });
-
         UpdateScoreText();
         StartCoroutine(TransitionToNextQuestion());
     }
@@ -188,7 +195,40 @@ public class Manager : MonoBehaviour
         }
     }
 
-    public int GetScore()
+    public int GetScore(int score)
+    {
+        var socket = SocketManager.Instance.Socket;
+        socket.EmitAsync("submitScore", new { score = score });
+
+        Score scoreManager = Score.Instance;
+        if (scoreManager != null)
+        {
+            scoreManager.ScoreFinal(score);
+        }
+        return score;
+    }
+
+    public string GetResult(string result)
+    {
+        Score scoreManager = Score.Instance;
+        if (scoreManager != null)
+        {
+            scoreManager.SetResult(result);
+        }
+        return result;
+    }
+
+    public void SetFinalResult(string resultF)
+    {
+        result = resultF;
+    }
+
+    public string GetFinalResult()
+    {
+        return result;
+    }
+
+    public int GetCurrentScore()
     {
         return score;
     }
@@ -198,7 +238,13 @@ public class Manager : MonoBehaviour
         animator.ResetTrigger("True");
         animator.ResetTrigger("False");
         animator.Play("NoAnswer");
-}
+    }
 
-
+    [System.Serializable]
+    public class FinalResultData
+    {
+        public int myScore;
+        public int opponentScore;
+        public string result;
+    }
 }
