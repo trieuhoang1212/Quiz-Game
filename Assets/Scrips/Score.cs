@@ -1,20 +1,22 @@
 using UnityEngine;
 using TMPro;
-using System;
-using SocketIOClient;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 public class Score : MonoBehaviour
 {
+    // Singleton của Score
     public static Score Instance;
+    // Điểm cuối để hiển thị ở màn Final
     private int maxPlatformScore = 0;
+    // UI điểm & kết quả
     public TextMeshProUGUI PointSocre;
     public TextMeshProUGUI ResultText;
     private string lastResult;
 
     void Awake()
     {
+    // Tạo singleton, giữ qua scene
         if (Instance == null)
         {
             Instance = this;
@@ -29,13 +31,12 @@ public class Score : MonoBehaviour
 
     void Start()
     {
-        var socket = SocketManager.Instance.Socket;
-        Manager ResultManager = FindObjectOfType<Manager>();
-        Manager ScoreManager = FindObjectOfType<Manager>();
-        if (ResultManager != null)
+    // Lấy điểm & kết quả từ GameManager khi vào scene Final
+        GameManager gm = FindObjectOfType<GameManager>();
+        if (gm != null)
         {
-            int finalScore = ScoreManager.GetCurrentScore();
-            string finalresult = ResultManager.GetFinalResult();
+            int finalScore = gm.GetCurrentScore();
+            string finalresult = gm.GetFinalResult();
             ScoreFinal(finalScore);
             SetResult(finalresult);
             
@@ -43,12 +44,13 @@ public class Score : MonoBehaviour
         else
         {
             Debug.LogError("ResultManager is NULL in Start!");
-            ResultText.text = "Waiting for result...";
+            if (ResultText != null) ResultText.text = "Waiting for result...";
         }
     }
 
     public void ScoreFinal(int point)
     {
+    // Cập nhật UI điểm cuối
         gameObject.SetActive(true);
         maxPlatformScore = point;
 
@@ -65,6 +67,7 @@ public class Score : MonoBehaviour
 
     public void SetResult(string result)
     {
+    // Cập nhật UI kết quả cuối (WINNER/LOSER/DRAW)
         Debug.Log("SetResult called with: " + result);
         gameObject.SetActive(true);
         lastResult = result;
@@ -78,7 +81,8 @@ public class Score : MonoBehaviour
 
     public async void MainMenu()
     {
-        var socket = SocketManager.Instance.Socket;
+    // Trở về Menu: ngắt socket, dọn singleton, load scene Menu
+        var socket = SocketIOManager.Instance != null ? SocketIOManager.Instance.Socket : null;
         if (socket != null)
         {
             socket.Off("gameResult");
@@ -86,8 +90,14 @@ public class Score : MonoBehaviour
             Debug.Log("Disconnected from server.");
         }
 
-        Destroy(SocketManager.Instance.gameObject);
-        Destroy(Manager.Instance.gameObject);
+        if (SocketIOManager.Instance != null)
+        {
+            Destroy(SocketIOManager.Instance.gameObject);
+        }
+        if (GameManager.Instance != null)
+        {
+            Destroy(GameManager.Instance.gameObject);
+        }
         Destroy(gameObject);
 
         SceneManager.LoadScene("Menu");

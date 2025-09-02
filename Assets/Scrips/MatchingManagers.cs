@@ -1,23 +1,22 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using SocketIOClient;
 using TMPro;
 using UnityEngine.UI;
-using System;
-using UnityEngine.Playables;
 using UnityEngine.SceneManagement;
 
-public class Matching : MonoBehaviour
+public class MatchingManagers : MonoBehaviour
 {
+    // Kết nối socket để ghép trận
     private SocketIOUnity socket;
+    // Nút tìm trận và nút vào chơi
     public Button startButton;
-    public Button resetButton;
     public Button playButton;
+    // Text hiển thị tạm
     public TMP_Text resultText;
     public bool isDone = false;
     public string result;
     private bool isMatched = false;
+    private bool listenersBound = false;
 
     public class UserData
     {
@@ -26,44 +25,59 @@ public class Matching : MonoBehaviour
         public int playerNumber { get; set; }
     }
 
-    async void Start()
+    void Start()
     {
-        // Lúc đầu tắt nút Play
+    // Lúc đầu tắt nút Play
         playButton.interactable = false;
 
-        socket = SocketManager.Instance.Socket;
+    // Lấy socket từ manager
+    socket = SocketIOManager.Instance.Socket;
 
-        socket.OnConnected += (sender, e) =>
+        if (!listenersBound)
         {
-            Debug.Log("Connected to the server");
-        };
+            socket.OnConnected += (sender, e) =>
+            {
+                Debug.Log("Connected to the server (Matching)");
+            };
 
-        socket.OnDisconnected += (sender, e) =>
-        {
-            Debug.Log("Disconnected from the server");
-        };
+            socket.OnDisconnected += (sender, e) =>
+            {
+                Debug.Log("Disconnected from the server (Matching)");
+            };
 
-        // Khi server báo đã đủ 2 người
-        socket.On("startGame", response =>
-        {
-            Debug.Log("Matching is completed!");
-            var data = response.GetValue<UserData>();
-            isMatched = true;
-            playButton.interactable = true;
-            Debug.Log($"Assigned as Player {data.playerNumber}");
-        });
+            // Khi server báo đã đủ 2 người
+            socket.On("startGame", response =>
+            {
+                Debug.Log("Matching is completed!");
+                var data = response.GetValue<UserData>();
+                isMatched = true;
+                playButton.interactable = true;
+                Debug.Log($"Assigned as Player {data.playerNumber}");
+            });
 
+            socket.On("playerSearching", response =>
+            {
+                var data = response.GetValue<UserData>();
+                Debug.Log($"Searching... You are in queue as Player {data.playerNumber}");
+            });
 
-        try
-        {
-            await socket.ConnectAsync();
+            socket.On("matchError", response =>
+            {
+                var msg = response.GetValue().ToString();
+                Debug.LogWarning($"Match error: {msg}");
+            });
+
+            socket.On("gameReset", response =>
+            {
+                Debug.Log("Server reset the game, you can search again.");
+                isMatched = false;
+                playButton.interactable = false;
+            });
+            listenersBound = true;
         }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"Connection Error: {ex.Message}\n{ex.StackTrace}");
-        }
 
-        startButton.onClick.AddListener(searchGame);
+    // Gắn sự kiện nút
+    startButton.onClick.AddListener(searchGame);
         playButton.onClick.AddListener(() =>
         {
             if (isMatched)
@@ -80,7 +94,7 @@ public class Matching : MonoBehaviour
 
     void searchGame()
     {
-        // startButton.interactable = false;
+    // Gửi yêu cầu tìm trận lên server
         socket.Emit("searchGame");
         Debug.Log("Searching game...");
     }
@@ -96,7 +110,8 @@ public class Matching : MonoBehaviour
 
     void playGame(string play)
     {
-        socket.EmitAsync("play", play);
+    // Báo server là đã sẵn sàng vào chơi
+        socket.Emit("play", play);
         Debug.Log($"Player chose completed");
         
     }

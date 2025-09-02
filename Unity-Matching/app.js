@@ -17,18 +17,26 @@ io.on("connection", (socket) => {
     console.log("A client connected: ", socket.id);
 
     socket.on("searchGame", () => {
-    if (players.length < 2) {
-      players.push(socket);
-      const playerNumber = players.length;
+    // Prevent duplicate queueing for the same socket
+    const alreadyQueued = players.some((p) => p.id === socket.id);
+    if (!alreadyQueued) {
+      if (players.length < 2) {
+        players.push(socket);
+        const playerNumber = players.length;
 
-      // log ra server
-      console.log(`Player ${playerNumber} search game: ${socket.id}`);
+        // log ra server
+        console.log(`Player ${playerNumber} search game: ${socket.id}`);
 
-      // gửi cho chính client biết mình là số mấy
-      socket.emit("playerSearching", { playerNumber });
+        // gửi cho chính client biết mình là số mấy
+        socket.emit("playerSearching", { playerNumber });
+      } else {
+        // do not use reserved 'error' event name; send a custom error event instead
+        socket.emit("matchError", { message: "Game is full" });
+        return;
+      }
     } else {
-      socket.emit("error", { message: "Game is full" });
-      return;
+      // Optionally inform client they're already queued
+      socket.emit("playerSearching", { playerNumber: players.findIndex(p => p.id === socket.id) + 1 });
     }
 
     if (players.length === 2) {
@@ -70,10 +78,16 @@ io.on("connection", (socket) => {
     });
 
     setTimeout(() => {
+      // Notify current players before clearing the arrays
+      const toNotify = [...players];
       players = [];
       scores = {};
       console.log("Game reset: players and scores cleared.");
-      players.forEach(player => player.emit("gameReset", { message: "Game has been reset" }));
+      toNotify.forEach(player => {
+        if (player?.connected) {
+          player.emit("gameReset", { message: "Game has been reset" });
+        }
+      });
     }, 10000);
   }
 });

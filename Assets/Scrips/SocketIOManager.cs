@@ -1,15 +1,18 @@
 using UnityEngine;
 using SocketIOClient;
-using System;
 using System.Collections.Generic;
+using System;
 
-public class SocketManager : MonoBehaviour
+public class SocketIOManager : MonoBehaviour
 {
-    public static SocketManager Instance { get; private set; }
-    private SocketIOUnity socket;
+    // Singleton quản lý Socket.IO cho toàn game
+    public static SocketIOManager Instance { get; private set; }
+    // Cho script khác dùng socket
+    public SocketIOUnity socket;
 
     void Awake()
     {
+    // Tạo singleton, giữ lại khi đổi scene
         if (Instance == null)
         {
             Instance = this;
@@ -24,6 +27,7 @@ public class SocketManager : MonoBehaviour
 
     void Start()
     {
+    // Khởi tạo socket và kết nối tới server
         var uri = new Uri("http://localhost:8000");
         socket = new SocketIOUnity(uri, new SocketIOOptions
         {
@@ -47,7 +51,8 @@ public class SocketManager : MonoBehaviour
 
     void OnDestroy()
     {
-        if (Instance == this)
+    // Ngắt kết nối khi object bị hủy
+    if (Instance == this)
         {
             socket?.DisconnectAsync();
         }
